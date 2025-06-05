@@ -1,10 +1,14 @@
 export const LAYERS = [
   {
-    title: "Storm layer",
+    title: "พื้นที่เกิดภัย",
+    url: "https://gis-portal.disaster.go.th/arcgis/rest/services/Hosted/DevMap_SPR/FeatureServer/3",
+  },
+  {
+    title: "คาดการณ์การเกิดภัย (1 วัน)",
     url: "https://gis-portal.disaster.go.th/arcgis/rest/services/Hosted/DevMap_SPR/FeatureServer/0",
   },
   {
-    title: "Water level layer",
+    title: "ข้อมูลน้ำท่า",
     url: "https://gis-portal.disaster.go.th/arcgis/rest/services/Hosted/DevMap_SPR/FeatureServer/1",
   },
   {

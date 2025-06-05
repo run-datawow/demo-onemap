@@ -51,7 +51,7 @@ export const ArcgisMap = () => {
   const formatMap = useCallback(
     async (layerData: { url: string; title: string }) => {
       const layer = new FeatureLayer({
-        ...(layerData.title === "Dam layer" && {
+        ...(layerData.title === "ข้อมูลเขื่อน" && {
           renderer: {
             type: "simple",
             symbol: {
@@ -62,7 +62,7 @@ export const ArcgisMap = () => {
             },
           },
         }),
-        ...(layerData.title === "Storm layer" && {
+        ...(layerData.title === "คาดการณ์การเกิดภัย (1 วัน)" && {
           renderer: {
             type: "simple",
             symbol: {
