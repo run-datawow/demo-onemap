@@ -12,7 +12,7 @@ export const LAYERS = [
     url: "https://gis-portal.disaster.go.th/arcgis/rest/services/Hosted/DevMap_SPR/FeatureServer/1",
   },
   {
-    title: "Dam layer",
+    title: "ข้อมูลเขื่อน",
     url: "https://gis-portal.disaster.go.th/arcgis/rest/services/Hosted/DevMap_SPR/FeatureServer/2",
   },
 ];
