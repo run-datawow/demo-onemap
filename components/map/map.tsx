@@ -7,6 +7,9 @@ import FeatureLayer from "@arcgis/core/layers/FeatureLayer";
 import Zoom from "@arcgis/core/widgets/Zoom";
 import Expand from "@arcgis/core/widgets/Fullscreen";
 import { LAYERS } from "../map-filters/map-filters";
+import { createRoot } from "react-dom/client";
+
+import "@arcgis/core/assets/esri/themes/light/main.css";
 
 export const ArcgisMap = () => {
   const mapRef = useRef(null);
@@ -17,6 +20,7 @@ export const ArcgisMap = () => {
     }[]
   >([]);
   const [view, setView] = useState<MapView | null>(null);
+  // 👇 ใช้ map เพื่อเก็บ root instance สำหรับ unmount ทีหลัง
 
   const map = useMemo(
     () =>
@@ -77,22 +81,22 @@ export const ArcgisMap = () => {
         popupEnabled: true,
         popupTemplate: {
           title: layerData.title,
-          content: [
-            {
-              type: "fields",
-              fieldInfos: [
-                {
-                  label: "Mando",
-                  fieldName: "Mando",
-                },
-              ],
-            },
-          ],
+          content: (context: { graphic: __esri.Graphic }) => {
+            const container = document.createElement("div");
+
+            const root = createRoot(container);
+            root.render(
+              <MyPopupComponent attributes={context.graphic.attributes} />
+            );
+
+            return container;
+          },
         },
         outFields: ["*"],
       });
 
       map.add(layer);
+
       layer.visible = false;
       return {
         layer,
@@ -125,4 +129,41 @@ export const ArcgisMap = () => {
   }, [layer, allFeatureLayer, view]);
 
   return <div id="map" ref={mapRef} className="map w-full h-screen" />;
+};
+
+interface Props {
+  attributes: __esri.Graphic["attributes"];
+}
+
+const MyPopupComponent: React.FC<Props> = ({ attributes }) => {
+  const [data, setData] = useState<unknown>(null);
+  const fethchData = useCallback(async () => {
+    const res = await fetch(`https://jsonplaceholder.typicode.com/todos/1`);
+    const data = await res.json();
+    return data;
+  }, []);
+
+  useEffect(() => {
+    fethchData().then((data) => {
+      setData(data);
+    });
+  }, [fethchData]);
+
+  return (
+    <div className="p-2 rounded space-y-4">
+      <p>This is a React component</p>
+      <div>
+        <p>Attributes</p>
+        <pre className="p-2 bg-neutral-200 rounded">
+          {JSON.stringify(attributes, null, 2)}
+        </pre>
+      </div>
+      <div>
+        <p>Data fetch</p>
+        <pre className="p-2 bg-neutral-200 rounded">
+          {JSON.stringify(data, null, 2)}
+        </pre>
+      </div>
+    </div>
+  );
 };
