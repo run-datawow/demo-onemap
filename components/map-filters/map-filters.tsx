@@ -19,7 +19,7 @@ export const LAYERS = [
 
 export const MapFilters = () => {
   return (
-    <div className="fixed top-3.5 left-3.5">
+    <div className="fixed top-3.5 left-3.5 z-10">
       <div className="w-2xs bg-white shadow rounded p-4">
         <p>Layers</p>
         <ul>

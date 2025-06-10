@@ -20,7 +20,6 @@ export const ArcgisMap = () => {
     }[]
   >([]);
   const [view, setView] = useState<MapView | null>(null);
-  // 👇 ใช้ map เพื่อเก็บ root instance สำหรับ unmount ทีหลัง
 
   const map = useMemo(
     () =>
@@ -79,19 +78,6 @@ export const ArcgisMap = () => {
         }),
         url: layerData.url,
         popupEnabled: true,
-        popupTemplate: {
-          title: layerData.title,
-          content: (context: { graphic: __esri.Graphic }) => {
-            const container = document.createElement("div");
-
-            const root = createRoot(container);
-            root.render(
-              <MyPopupComponent attributes={context.graphic.attributes} />
-            );
-
-            return container;
-          },
-        },
         outFields: ["*"],
       });
 
@@ -128,42 +114,124 @@ export const ArcgisMap = () => {
     });
   }, [layer, allFeatureLayer, view]);
 
-  return <div id="map" ref={mapRef} className="map w-full h-screen" />;
+  const popupRootRef = useRef<ReturnType<typeof createRoot> | null>(null);
+  let currentPopupPoint: __esri.Point | null = null;
+
+  function showCustomReactPopup(attributes: unknown, mapPoint: __esri.Point) {
+    const container = document.getElementById("custom-popup");
+    if (!container) return;
+
+    // แปลงตำแหน่งพิกัดบนแผนที่ → ตำแหน่งบนหน้าจอ
+    const screenPoint = view?.toScreen(mapPoint); // <-- ใช้ view ที่ประกาศไว้ใน scope
+    if (!screenPoint) return;
+    // กำหนดตำแหน่งของ popup
+    container.style.left = `${screenPoint.x - 320 / 2}px`;
+    container.style.top = `${screenPoint.y}px`;
+    container.style.display = "block";
+
+    // Reuse or create the root instance
+    if (!popupRootRef.current) {
+      popupRootRef.current = createRoot(container);
+    }
+
+    popupRootRef.current.render(
+      <ShowCustomReactPopup attributes={attributes} />
+    );
+  }
+
+  function hidePopup() {
+    const container = document.getElementById("custom-popup");
+    if (container) {
+      container.style.display = "none";
+    }
+
+    if (popupRootRef) {
+      popupRootRef.current = null;
+    }
+  }
+
+  function updatePopupPosition() {
+    if (!currentPopupPoint) return;
+
+    const container = document.getElementById("custom-popup");
+    if (!container) return;
+
+    const screenPoint = view?.toScreen(currentPopupPoint);
+    container.style.left = `${Number(screenPoint?.x) - 320 / 2}px`;
+    container.style.top = `${screenPoint?.y}px`;
+  }
+
+  view?.on("click", (event) => {
+    view.hitTest(event).then((response) => {
+      const result = response.results.find(
+        (r): r is __esri.GraphicHit =>
+          r.type === "graphic" &&
+          allFeatureLayer
+            .map((l) => l.layer.id)
+            .includes(String(r.graphic.layer?.id))
+      );
+
+      if (result) {
+        const attributes = result.graphic.attributes;
+        showCustomReactPopup(attributes, event.mapPoint);
+      } else {
+        document.getElementById("custom-popup")!.style.display = "none";
+      }
+    });
+  });
+
+  view?.watch("extent", () => {
+    updatePopupPosition();
+  });
+
+  view?.on("click", (event) => {
+    view.hitTest(event).then((response) => {
+      const hit = response.results.find(
+        (r): r is __esri.GraphicHit => r.type === "graphic"
+      );
+      if (hit) {
+        currentPopupPoint = event.mapPoint; // ✅ เก็บไว้ใช้ตอน map ขยับ
+        showCustomReactPopup(hit.graphic.attributes, event.mapPoint);
+      } else {
+        currentPopupPoint = null;
+        hidePopup();
+      }
+    });
+  });
+
+  return (
+    <>
+      <div
+        id="custom-popup"
+        className="absolute z-[999] hidden pointer-events-auto"
+      >
+        <div
+          className="absolute -top-[8px] left-1/2 transform -translate-x-1/2 w-4 h-4 bg-white shadow-md"
+          style={{
+            filter:
+              "drop-shadow(-2px 0 2px rgba(0,0,0,0.15)) drop-shadow(0 -2px 2px rgba(0,0,0,0.15))",
+          }}
+        />
+      </div>
+      <div id="map" ref={mapRef} className="map w-full h-screen" />
+    </>
+  );
 };
 
 interface Props {
   attributes: __esri.Graphic["attributes"];
 }
 
-const MyPopupComponent: React.FC<Props> = ({ attributes }) => {
-  const [data, setData] = useState<unknown>(null);
-  const fethchData = useCallback(async () => {
-    const res = await fetch(`https://jsonplaceholder.typicode.com/todos/1`);
-    const data = await res.json();
-    return data;
-  }, []);
-
-  useEffect(() => {
-    fethchData().then((data) => {
-      setData(data);
-    });
-  }, [fethchData]);
-
+const ShowCustomReactPopup: React.FC<Props> = ({ attributes }) => {
   return (
-    <div className="p-2 rounded space-y-4">
-      <p>This is a React component</p>
-      <div>
-        <p>Attributes</p>
-        <pre className="p-2 bg-neutral-200 rounded">
-          {JSON.stringify(attributes, null, 2)}
-        </pre>
-      </div>
-      <div>
-        <p>Data fetch</p>
-        <pre className="p-2 bg-neutral-200 rounded">
-          {JSON.stringify(data, null, 2)}
-        </pre>
-      </div>
+    <div
+      id={attributes.objectid}
+      className="bg-white p-4 rounded-md shadow-md max-w-xs space-y-2"
+    >
+      <p>Custom popup wit React Component</p>
+      <pre className="overflow-auto bg-slate-100 p-4 rounded">
+        {JSON.stringify(attributes, null, 2)}
+      </pre>
     </div>
   );
 };
